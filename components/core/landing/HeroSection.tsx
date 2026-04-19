@@ -19,7 +19,7 @@ export function HeroSection() {
               alt={siteConfig.name}
               fill
               placeholder="blur"
-              className="object-cover scale-[1.13] object-[-20px_3px]"
+              className="object-cover object-center scale-[1.13] object-[-20px_3px]"
               priority
             />
           </div>
