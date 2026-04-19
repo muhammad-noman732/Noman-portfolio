@@ -1,0 +1,50 @@
+import { SectionHeader } from "@/components/shared/SectionHeader";
+
+export function AboutSection() {
+  const baseDelay = 480;
+
+  return (
+    <section className="py-8">
+      <div
+        className="animate-fade-in "
+        style={{ animationDelay: `${baseDelay}ms` }}
+      >
+        <SectionHeader label="About" title="A Bit About Me" />
+      </div>
+      <div className="max-w-[72ch] space-y-2 text-sm leading-[1.8] text-muted-foreground">
+        <p
+          className="animate-fade-in "
+          style={{ animationDelay: `${baseDelay + 80}ms` }}
+        >
+          I&apos;m a full-stack developer with hands-on experience building
+          production-ready applications across MERN, Next.js, and React Native.
+        </p>
+        <p
+          className="animate-fade-in "
+          style={{ animationDelay: `${baseDelay + 160}ms` }}
+        >
+          I Worked as a Junior Developer at MIT Programmer, developing
+          client solutions and a full-stack CRM with complete data flow. I then
+          completed Techloset&apos;s 4-month Full-Stack &amp; Agentic AI Bootcamp,
+          focused on full-stack and AI product development with modern
+          frameworks and production workflows.
+        </p>
+        <p
+          className="animate-fade-in "
+          style={{ animationDelay: `${baseDelay + 240}ms` }}
+        >
+          I care about the full picture: clean architecture, strong UX, reliable
+          backend flows, and AI that solves real product problems.
+        </p>
+
+        <p
+          className="animate-fade-in "
+          style={{ animationDelay: `${baseDelay + 320}ms` }}
+        >
+          If you&apos;re building something worth building or just want to talk
+          tech, AI, or ideas, I&apos;d genuinely love to connect.
+        </p>
+      </div>
+    </section>
+  );
+}
