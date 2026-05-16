@@ -9,7 +9,6 @@ import { CommandLine } from "@/components/blog/deployment/CommandLine";
 import { SectionDivider } from "@/components/blog/deployment/SectionDivider";
 
 const components: MDXComponents = {
-    // ── Headings ──────────────────────────────────────────────────────────────
     h1: ({ children, ...props }) => (
         <h1
             className="mt-0 mb-8 text-4xl font-bold tracking-tight text-foreground"
@@ -46,12 +45,10 @@ const components: MDXComponents = {
         </h4>
     ),
 
-    // ── Body text ─────────────────────────────────────────────────────────────
     p: ({ children }) => (
         <p className="mb-5 leading-7 text-muted-foreground">{children}</p>
     ),
 
-    // ── Lists ─────────────────────────────────────────────────────────────────
     ul: ({ children }) => (
         <ul className="mb-5 ml-6 list-disc space-y-1.5 text-muted-foreground">
             {children}
@@ -68,14 +65,12 @@ const components: MDXComponents = {
         <li className="leading-7">{children}</li>
     ),
 
-    // ── Blockquote ────────────────────────────────────────────────────────────
     blockquote: ({ children }) => (
         <blockquote className="my-6 border-l-4 border-primary pl-6 italic text-muted-foreground">
             {children}
         </blockquote>
     ),
 
-    // ── Tables ────────────────────────────────────────────────────────────────
     table: ({ children }) => (
         <div className="my-6 w-full overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-sm">{children}</table>
@@ -102,26 +97,35 @@ const components: MDXComponents = {
         <tr className="transition-colors hover:bg-muted/40">{children}</tr>
     ),
 
-    // ── Code ──────────────────────────────────────────────────────────────────
-    // <pre> wraps fenced code blocks — delegate to our CodeBlock component
-    pre: ({ children, ...props }) => (
-        <CodeBlock {...props}>{children}</CodeBlock>
-    ),
-
-    // Backtick inline code  `like this`
-    code: ({ children, ...props }) => {
-        // rehype-pretty-code turns fenced blocks into <code data-language="...">
-        // inside <pre>. Inline code has NO data-language attribute.
-        const isInline = !("data-language" in (props as Record<string, unknown>));
-        if (isInline) return <InlineCode>{children}</InlineCode>;
-        // Fenced code — just render; CodeBlock above handles the wrapping.
-        return <code {...props}>{children}</code>;
+    pre: ({ children }) => {
+        return <div className="not-prose">{children}</div>;
     },
 
-    // ── Horizontal rule ───────────────────────────────────────────────────────
+    code: async ({ children, className, ...props }: any) => {
+        const isInline = !className?.includes("language-");
+        if (isInline) return <InlineCode>{children}</InlineCode>;
+
+        const language = className?.replace("language-", "") || "text";
+        const code = String(children).trim();
+
+        const { codeToHtml } = await import("shiki");
+        const html = await codeToHtml(code, {
+            lang: language,
+            themes: {
+                light: "github-light",
+                dark: "github-dark",
+            },
+        });
+
+        return (
+            <CodeBlock data-language={language}>
+                <div dangerouslySetInnerHTML={{ __html: html }} className="[&>pre]:!bg-transparent [&>pre]:!p-0" />
+            </CodeBlock>
+        );
+    },
+
     hr: () => <SectionDivider />,
 
-    // ── Links ─────────────────────────────────────────────────────────────────
     a: ({ href, children }) => (
         <a
             href={href}
@@ -133,7 +137,6 @@ const components: MDXComponents = {
         </a>
     ),
 
-    // ── Images ────────────────────────────────────────────────────────────────
     img: (props) => (
         <Image
             sizes="(max-width: 768px) 100vw, 800px"
@@ -143,8 +146,6 @@ const components: MDXComponents = {
         />
     ),
 
-    // ── Custom components exposed to every .mdx file ──────────────────────────
-    // Use them in MDX like: <Callout type="warning">...</Callout>
     Callout,
     PhaseHeading,
     CommandLine,
