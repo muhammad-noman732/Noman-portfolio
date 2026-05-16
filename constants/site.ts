@@ -8,7 +8,7 @@ export const siteConfig = {
   description:
     "Muhammad Noman is a full-stack developer specializing in Next.js, React, React Native. Explore projects, skills, and experience. Based in Lahore, Pakistan.",
   url: "https://nomandev.dev",
-  ogImage: "/avatar.png",
+  ogImage: "/assets/logos/logo-dark.png",
   email: "noman.dev200@gmail.com",
   jobTitle: "Full-Stack Developer ",
   location: "Lahore, Pakistan",
