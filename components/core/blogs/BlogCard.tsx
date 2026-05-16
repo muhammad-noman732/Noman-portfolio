@@ -24,7 +24,7 @@ export function BlogCard({ post }: BlogCardProps) {
             {formatDate(post.date)}
           </time>
         </div>
-        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-1.5 text-sm leading-relaxed tracking-wide text-muted-foreground">
           {post.description}
         </p>
         <div className="mt-2 flex items-center gap-2">

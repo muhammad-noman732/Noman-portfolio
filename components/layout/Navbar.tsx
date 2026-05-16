@@ -13,23 +13,23 @@ export function Navbar() {
           href="/"
           className="inline-flex items-center gap-2 text-foreground transition-opacity duration-150 hover:opacity-70"
         >
-          <div className="border py-2.5  px-2 rounded-lg ">
+          <div className="border py-2.5 px-2 rounded-lg flex items-center justify-center">
             <Image
-              src="/assets/logos/logo-2.png"
-              alt="AR Logo"
-              width={25}
+              src="/assets/logos/logo-light.png"
+              alt="MN Logo"
+              width={20}
               height={15}
-              className="block   dark:hidden"
+              className="block dark:hidden object-contain mix-blend-multiply"
             />
             <Image
-              src="/assets/logos/logo-1.png"
-              alt="AR Logo"
-              width={25}
+              src="/assets/logos/logo-dark.png"
+              alt="MN Logo"
+              width={20}
               height={15}
-              className="hidden   dark:block"
+              className="hidden dark:block object-contain mix-blend-screen"
             />
           </div>
-          <span className="text-sm font-medium tracking-tight">
+          <span className="text-sm hidden sm:block font-medium tracking-tight">
             {siteConfig.name}
           </span>
         </Link>

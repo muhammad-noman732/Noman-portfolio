@@ -1,0 +1,996 @@
+---
+title: "Deploying a Full-Stack Next.js Application to Production"
+description: "A complete, no-shortcuts guide covering Docker, PostgreSQL, Redis, Nginx, SSL, and GitHub Actions CI/CD — from localhost to a live HTTPS server."
+date: "2025-05-15"
+author: "Muhammad Noman"
+tags: ["Next.js", "Docker", "DevOps", "PostgreSQL", "Nginx", "CI/CD"]
+readingTime: "12 min read"
+---
+
+{/*
+  content/blog/deploying-nextjs-to-production.mdx
+  ─────────────────────────────────────────────────────────────────────────────
+  Phase 5 — The actual blog post.
+  All components used here (<Callout>, <PhaseHeading>, <CommandLine>) are
+  registered globally in mdx-components.tsx — no import needed.
+  Code blocks use rehype-pretty-code for syntax highlighting automatically.
+*/}
+
+export const metadata = {
+  title:       "Deploying a Full-Stack Next.js Application to Production",
+  description: "A complete, no-shortcuts guide covering Docker, PostgreSQL, Redis, Nginx, SSL, and GitHub Actions CI/CD — from localhost to a live HTTPS server.",
+  date:        "2025-05-15",
+  author:      "Muhammad Noman",
+  tags:        ["Next.js", "Docker", "DevOps", "PostgreSQL", "Nginx", "CI/CD"],
+};
+
+Shipping an application is one thing. Keeping it available, secure, and automatically updated is another challenge entirely. On `localhost`, your machine handles every dependency. On a production server, nothing is pre-configured — there is no runtime, no database, no SSL, no process manager.
+
+This guide covers every step needed to take a full-stack Next.js application from a local machine to a hardened production server with HTTPS, automated deployments, a PostgreSQL database, Redis caching, and Nginx as a reverse proxy.
+
+**The stack covered in this guide:**
+
+- Next.js 16 with `output: "standalone"` for lean production builds
+- Docker to containerise every service
+- PostgreSQL for persistent data storage
+- Redis for sessions and caching
+- Nginx as a reverse proxy with SSL termination
+- Let's Encrypt for free, auto-renewing SSL certificates
+- GitHub Actions for automated CI/CD
+- Prisma 7 for schema migrations
+
+<Callout type="info" title="Real-world experience">
+  Every decision in this guide comes from a real production deployment of a university fee management system — including the mistakes and the fixes.
+</Callout>
+
+---
+
+## Prerequisites: Linux Basics and Networking
+
+Before provisioning a server, get comfortable with a handful of essential concepts. These commands and ideas will appear constantly throughout this guide.
+
+### Essential Linux Commands
+
+```bash
+ls -la
+```
+Lists all files and directories, including hidden ones. The `-la` flags reveal permissions and ownership.
+
+```bash
+cd ~/myproject
+```
+Navigates into a directory. The `~` tilde is shorthand for your home folder.
+
+```bash
+nano filename
+```
+Opens a file for editing directly in the terminal. `Ctrl+O` saves, `Ctrl+X` exits.
+
+```bash
+sudo command
+```
+Executes a command as the system administrator. Required for installing software, modifying system files, and managing services.
+
+```bash
+journalctl -u docker --tail 50
+```
+Streams the last 50 log lines for a service. Indispensable for diagnosing issues in production.
+
+### File Permissions
+
+Every file on Linux carries permissions that govern who can read, write, or execute it.
+
+```bash
+chmod 600 ~/.ssh/my-key.pem
+```
+
+<Callout type="warning">
+  SSH keys must have restricted permissions. If the file mode is too permissive, SSH will refuse to use the key and the connection will fail.
+</Callout>
+
+### Networking Concepts
+
+Every server has a public IP address. Registering a domain name means creating a DNS record that maps that name to the IP. When a browser resolves the domain, it connects to port `443` for HTTPS or port `80` for HTTP.
+
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| 22   | TCP      | SSH access |
+| 80   | HTTP     | Web traffic / Let's Encrypt verification |
+| 443  | HTTPS    | Encrypted web traffic |
+| 5432 | TCP      | PostgreSQL (internal only) |
+| 6379 | TCP      | Redis (internal only) |
+
+---
+
+<PhaseHeading number={1} title="Setting Up Your Server" />
+
+### Choosing a Server
+
+This guide uses AWS EC2, but every concept transfers directly to any VPS provider — DigitalOcean, Hetzner, Vultr, or Linode. The setup is identical once there is a fresh Ubuntu 24.04 server with an assigned IP address.
+
+<Callout type="warning" title="Assign a Static IP">
+  Without a static (Elastic) IP, the server receives a new address on every restart. Any domain pointing to the old IP stops resolving immediately.
+</Callout>
+
+### SSH Configuration
+
+Rather than typing the full SSH command every time, create a config file at `~/.ssh/config` on the local machine:
+
+```
+Host myserver
+    HostName YOUR_SERVER_IP
+    User ubuntu
+    IdentityFile ~/.ssh/your-key.pem
+```
+
+This reduces the connection to a single, memorable command:
+
+<CommandLine cmd="ssh myserver" />
+
+### Firewall and Security Groups
+
+For a web application these are the required inbound rules:
+
+| Port | Source    | Purpose |
+|------|-----------|---------|
+| 22   | Anywhere  | SSH access for you and GitHub Actions |
+| 80   | Anywhere  | HTTP for Let's Encrypt and redirects |
+| 443  | Anywhere  | HTTPS for your application |
+
+<Callout type="danger" title="Never expose database ports">
+  Ports `5432` (PostgreSQL) and `6379` (Redis) must never appear in public firewall rules. Both services communicate exclusively over internal Docker networks.
+</Callout>
+
+### Initial Server Configuration
+
+Create a non-root user immediately. Operating entirely as root is a significant security risk — a single mistyped command can cause irreversible system damage.
+
+```bash
+sudo adduser noman
+sudo usermod -aG sudo noman
+sudo usermod -aG docker noman
+```
+
+### Adding Swap Memory
+
+Cloud servers often have constrained RAM. Building a Node.js application demands far more memory than running one. Without swap space, the build process is killed mid-flight and the server becomes unresponsive.
+
+Add 2 GB of swap before doing anything else:
+
+```bash
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
+<Callout type="tip">
+  The final line persists swap across reboots. Without it, the swap partition vanishes every time the server restarts.
+</Callout>
+
+---
+
+<PhaseHeading number={2} title="Docker" />
+
+### The Problem Docker Solves
+
+Development machines carry specific versions of Node.js, PostgreSQL, and Redis. A production server may have different versions installed, missing system libraries, or conflicting configurations.
+
+Docker packages the application and every dependency into a self-contained unit called a **container**. That container runs identically on a development machine, a colleague's laptop, and a production server — regardless of what is installed on the host.
+
+### Installing Docker
+
+```bash
+sudo apt update
+sudo apt install -y docker.io docker-compose-plugin
+sudo systemctl enable docker
+sudo systemctl start docker
+```
+
+Verify the installation:
+
+<CommandLine cmd="docker --version" />
+<CommandLine cmd="docker compose version" />
+
+### Images vs Containers
+
+A **Docker image** is a blueprint — application code, the runtime, and all dependencies frozen at a specific point in time. An image does not execute; it is a template.
+
+A **Docker container** is a live, running instance of an image. Multiple containers can be spawned from the same image simultaneously.
+
+Think of an image as a recipe and a container as the dish prepared from it.
+
+**Key Docker commands:**
+
+```bash
+docker images              # list all local images
+docker ps                  # list running containers
+docker ps -a               # all containers (including stopped)
+docker logs container_name # view container output
+docker exec -it container_name sh  # open shell inside container
+docker system prune -f     # free up disk space
+```
+
+
+A `Dockerfile` is a plain text file that defines how a Docker image is built. It lives at the **root of your project** alongside `package.json`. Docker reads it top-to-bottom and executes each instruction to produce a final image.
+
+Every instruction adds a layer to the image. The `FROM` instruction sets the base operating system. `COPY` brings in your application files. `RUN` executes shell commands. `CMD` defines what process starts when a container launches.
+
+### Multi-Stage Builds
+
+A single-stage Dockerfile has a size problem. Building a Next.js application pulls in TypeScript, ESLint, and hundreds of megabytes of development dependencies — none of which are required to serve the application.
+
+Multi-stage builds eliminate this: the Dockerfile defines several named `FROM` stages, and the final stage only contains what is explicitly copied from earlier ones. Build tooling and dev dependencies are discarded entirely. The result is a production image that can be 70–80% smaller than a naive single-stage build.
+
+```dockerfile
+FROM node:20-alpine AS base
+
+# ── Stage 1: Install all dependencies ────────────────────────────────────────
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY prisma ./prisma/
+RUN npm ci
+
+# ── Stage 2: Build the application ───────────────────────────────────────────
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY prisma ./prisma/
+COPY . .
+
+# Dummy values satisfy module checks during build.
+# Real values come from .env at runtime — these are never used.
+ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
+ENV REDIS_URL="redis://placeholder:6379"
+ENV JWT_SECRET="placeholder-secret-for-build-only"
+ENV NEXTAUTH_SECRET="placeholder-secret-for-build-only"
+ENV NEXT_PUBLIC_APP_URL="https://yourdomain.com"
+ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_placeholder"
+ENV STRIPE_SECRET_KEY="sk_test_placeholder"
+ENV STRIPE_WEBHOOK_SECRET="whsec_placeholder"
+ENV SENDGRID_API_KEY="SG.placeholder"
+ENV FROM_EMAIL="noreply@yourdomain.com"
+
+RUN npx prisma generate
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN NODE_OPTIONS="--max-old-space-size=1536" npm run build
+
+# ── Stage 3: Production image ─────────────────────────────────────────────────
+FROM base AS runner
+RUN apk add --no-cache dumb-init
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+ENV HOME=/home/nextjs
+
+RUN mkdir -p /home/nextjs
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 --ingroup nodejs \
+    --home /home/nextjs --shell /bin/false nextjs
+
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/app/generated ./app/generated
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
+
+RUN npm install prisma@7.8.0
+RUN chown -R nextjs:nodejs /app && chown -R nextjs:nodejs /home/nextjs
+
+USER nextjs
+EXPOSE 3000
+
+HEALTHCHECK \
+    --interval=30s \
+    --timeout=10s \
+    --start-period=60s \
+    --retries=3 \
+    CMD node -e "require('http').get('http://127.0.0.1:3000', \
+    (res) => process.exit(res.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"
+
+CMD ["dumb-init", "node", "server.js"]
+```
+
+<Callout type="tip" title="Why dumb-init?">
+  Node.js does not handle Unix signals correctly when running as PID 1 inside a container. `dumb-init` acts as a minimal init process, forwarding signals properly and ensuring `docker stop` triggers a graceful shutdown.
+</Callout>
+
+### next.config.ts: The Standalone Output
+
+Configure Next.js for standalone output before building the Docker image:
+
+```typescript
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  output: "standalone",
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+};
+
+export default nextConfig;
+```
+
+<Callout type="info">
+  Without `output: "standalone"`, a production Next.js build requires the entire `node_modules` folder to run. Standalone mode produces a self-contained `server.js` with only the runtime dependencies it actually uses.
+</Callout>
+
+### Building and Pushing the Image
+
+<Callout type="warning" title="Build locally, not on the server">
+  Never build a Next.js application directly on the production server. Limited RAM will exhaust memory mid-build and freeze the machine. Build the image locally, push it to Docker Hub, and pull the finished image on the server.
+</Callout>
+
+```bash
+docker login
+docker build -t yourdockerhubusername/your-app:latest .
+docker push yourdockerhubusername/your-app:latest
+```
+
+---
+
+<PhaseHeading number={3} title="Docker Volumes" />
+
+
+By default, any file written inside a container exists only for as long as that container runs. When the container is removed or replaced, the data is gone. This is fine for stateless application code — it is fatal for a database.
+
+A **Docker volume** is a storage mechanism managed by Docker itself, existing outside the container filesystem on the host machine. The container writes to a path inside itself, but Docker transparently redirects those writes to the named volume, which persists independently of any container lifecycle.
+
+### The Problem
+
+Containers are ephemeral by design. Stopping or replacing a container discards everything inside it. For application code, this is intentional. For a database, it is **catastrophic**.
+
+If PostgreSQL stores its data inside the container filesystem and the container is replaced during a deployment, every user record and every transaction is gone permanently.
+
+### How Named Volumes Solve This
+
+Docker named volumes live outside the container on the host machine. Writes go through a Docker-managed path that persists independently of any container lifecycle.
+
+```bash
+docker volume ls                          # list all volumes
+docker volume inspect myproject_postgres_data   # inspect a volume
+```
+
+<Callout type="danger">
+  Never run `docker compose down -v` on a production server. The `-v` flag removes all volumes and **permanently destroys all database data** with no recovery path.
+</Callout>
+
+### Bind Mounts vs Named Volumes
+
+| Type | Use For | Why |
+|------|---------|-----|
+| Named volumes | PostgreSQL, Redis data | Managed by Docker, survive container replacements |
+| Bind mounts | Nginx config files | Edit directly on host without rebuilding images |
+
+---
+
+<PhaseHeading number={4} title="Docker Networks" />
+
+### The Problem: Containers Cannot Talk to Each Other by Default
+
+Each container is isolated. By default, a Next.js container has no way to reach a PostgreSQL container even if both are running on the same host. To communicate, containers must be explicitly placed on a shared network.
+
+Beyond connectivity, there is a security concern. In a naive setup, a single compromised service could potentially reach every other service. A database should never be reachable from the internet — yet without deliberate network separation, the firewall alone is not enough.
+
+### How Docker Networks Solve This
+
+Docker networks create isolated communication channels between containers. Containers on the same network can reach each other by their service name — no IP addresses needed. Containers on different networks are completely isolated.
+
+This setup uses two separate networks:
+
+- **`backend_network`** — connects PostgreSQL, Redis, and Next.js. Nothing outside this network can access the database.
+- **`frontend_network`** — connects Next.js and Nginx. Nginx accepts internet traffic and forwards it to Next.js internally.
+
+Even if Nginx were compromised, an attacker still cannot reach the database. The network boundary enforces this at the infrastructure level.
+
+### Port Mapping
+
+The `ports` key maps a host port to a container port. Format is `host_port:container_port`.
+
+- Nginx receives ports `80` and `443` — it is the only service that accepts internet traffic
+- Next.js has **no port mapping** — reachable only through Nginx on the internal network
+- PostgreSQL and Redis have **no port mapping** — internal only, unreachable from outside
+
+---
+
+<PhaseHeading number={5} title="Docker Compose" />
+
+
+Managing five separate `docker run` commands — each with its own flags, networks, and volume mounts — is impractical and error-prone. **Docker Compose** solves this by letting you define the entire application stack in a single declarative file.
+
+The file is named `docker-compose.yml` (or `compose.yml`) and lives at the **root of your project**. Running `docker compose up` reads the file, creates all the defined networks and volumes, and starts every service in dependency order.
+
+Each service in the file corresponds to one container. Services can reference each other by name — this is why the database URL uses `postgres` as the hostname rather than an IP address. Docker resolves the service name to the correct container automatically.
+
+### The Complete Stack Definition
+
+```yaml
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis_cache
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nextjs:
+    image: yourdockerhubusername/your-app:latest
+    container_name: nextjs_app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+    networks:
+      - backend_network
+      - frontend_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - certbot_data:/var/www/certbot
+    networks:
+      - frontend_network
+    depends_on:
+      nextjs:
+        condition: service_healthy
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: certbot
+    volumes:
+      - ./nginx/ssl:/etc/letsencrypt
+      - certbot_data:/var/www/certbot
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  certbot_data:
+    driver: local
+
+networks:
+  backend_network:
+    driver: bridge
+  frontend_network:
+    driver: bridge
+```
+
+**Key Docker Compose commands:**
+
+```bash
+docker compose up -d                       # start all services (detached)
+docker compose ps                          # check status and healthchecks
+docker compose logs -f nextjs              # follow live logs
+docker compose pull nextjs                 # pull latest image without restarting
+docker compose up -d --force-recreate nextjs   # restart only Next.js
+docker compose exec nextjs sh              # open shell in running container
+```
+
+<Callout type="tip" title="depends_on with healthchecks">
+  `condition: service_healthy` guarantees containers start in the correct order. Next.js will not launch until PostgreSQL and Redis pass their healthchecks, eliminating connection errors on startup.
+</Callout>
+
+---
+
+<PhaseHeading number={6} title="Nginx as Reverse Proxy" />
+
+
+Next.js listens on port `3000`. Browsers expect HTTPS on port `443`. Nginx bridges that gap.
+
+A **reverse proxy** sits in front of your application server. It accepts all incoming internet traffic and forwards it to the appropriate internal service. Clients never communicate with Next.js directly — they only ever see Nginx.
+
+Beyond routing, Nginx handles several responsibilities that Next.js should not own:
+
+- **SSL termination** — decrypts HTTPS traffic so Next.js always receives plain HTTP internally
+- **Rate limiting** — limits requests per IP to protect against brute force and abuse
+- **Gzip compression** — compresses responses before they leave the server, reducing bandwidth by up to 80%
+- **Security headers** — adds `X-Frame-Options`, `X-Content-Type-Options`, and similar headers automatically
+- **Static asset caching** — tells browsers to cache `/_next/static/` files for one year
+
+The configuration lives in `nginx/nginx.conf` at the root of your project. It is mounted into the Nginx container as a read-only bind mount, so editing the file and restarting Nginx applies changes instantly — no image rebuild needed.
+
+### The Full Nginx Configuration
+
+```nginx
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    # Security: hide Nginx version from response headers
+    server_tokens off;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+
+    # Compression: CSS/JS/JSON compress ~70-80%
+    gzip on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css application/javascript application/json;
+
+    # Rate limiting by IP address
+    limit_req_zone $binary_remote_addr zone=general:10m rate=10r/s;
+    limit_req_zone $binary_remote_addr zone=api:10m rate=5r/s;
+
+    upstream nextjs_upstream {
+        server nextjs:3000;
+        keepalive 32;   # reuse connections — significantly reduces latency
+    }
+
+    # HTTP → HTTPS redirect + Let's Encrypt challenge
+    server {
+        listen 80;
+        server_name yourdomain.com www.yourdomain.com;
+
+        location /.well-known/acme-challenge/ {
+            root /var/www/certbot;
+        }
+
+        location / {
+            return 301 https://$host$request_uri;
+        }
+    }
+
+    # HTTPS server
+    server {
+        listen 443 ssl;
+        server_name yourdomain.com www.yourdomain.com;
+
+        ssl_certificate     /etc/nginx/ssl/live/yourdomain.com/fullchain.pem;
+        ssl_certificate_key /etc/nginx/ssl/live/yourdomain.com/privkey.pem;
+        ssl_protocols       TLSv1.2 TLSv1.3;
+        ssl_prefer_server_ciphers off;
+        ssl_session_cache   shared:SSL:10m;
+        ssl_session_timeout 1d;
+
+        # General pages — 10 req/s, burst of 20
+        location / {
+            proxy_pass http://nextjs_upstream;
+            proxy_set_header Host              $host;
+            proxy_set_header X-Real-IP         $remote_addr;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_connect_timeout 60s;
+            proxy_send_timeout    60s;
+            proxy_read_timeout    60s;
+            limit_req zone=general burst=20 nodelay;
+        }
+
+        # Static assets — aggressive cache (1 year, immutable)
+        location /_next/static/ {
+            proxy_pass http://nextjs_upstream;
+            add_header Cache-Control "public, immutable, max-age=31536000";
+        }
+
+        # Webhooks — MUST come before /api/ — no rate limiting
+        location /api/webhooks/ {
+            proxy_pass http://nextjs_upstream;
+            proxy_set_header Host              $host;
+            proxy_set_header X-Real-IP         $remote_addr;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 30s;
+        }
+
+        # API routes — 5 req/s (more expensive — hit the database)
+        location /api/ {
+            proxy_pass http://nextjs_upstream;
+            proxy_set_header Host              $host;
+            proxy_set_header X-Real-IP         $remote_addr;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 120s;
+            limit_req zone=api burst=10 nodelay;
+        }
+    }
+}
+```
+
+<Callout type="info" title="Why proxy_set_header matters">
+  Without these headers, every request appears to originate from Nginx's internal IP. Rate limiting breaks because all clients look identical. Authentication callbacks produce HTTP URLs instead of HTTPS. Always forward `Host`, `X-Real-IP`, and `X-Forwarded-Proto` on every location block.
+</Callout>
+
+### The SSL Certificate Bootstrap Problem
+
+There is a classic bootstrap problem here: Nginx needs an SSL certificate to start. The certificate cannot be issued until Let's Encrypt verifies domain ownership. Let's Encrypt performs that verification over HTTP through Nginx.
+
+**The solution is a deliberate two-stage approach:**
+
+**Step 1 — Start with an HTTP-only config:**
+
+```nginx
+events { worker_connections 1024; }
+http {
+    upstream nextjs_upstream { server nextjs:3000; }
+    server {
+        listen 80;
+        server_name yourdomain.com www.yourdomain.com;
+        location /.well-known/acme-challenge/ { root /var/www/certbot; }
+        location / {
+            proxy_pass http://nextjs_upstream;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+}
+```
+
+**Step 2 — Get the certificate:**
+
+```bash
+docker compose up -d nginx
+
+docker compose run --rm certbot certonly \
+    --webroot \
+    --webroot-path /var/www/certbot \
+    --email your@email.com \
+    --agree-tos \
+    --no-eff-email \
+    -d yourdomain.com \
+    -d www.yourdomain.com
+```
+
+**Step 3 — Restore the full SSL config and restart:**
+
+```bash
+git checkout nginx/nginx.conf
+docker compose restart nginx
+```
+
+---
+
+<PhaseHeading number={7} title="Environment Variables and Secrets" />
+
+
+Hard-coding database passwords, API keys, or domain names directly into source code is a critical security vulnerability. Anyone with access to the repository has access to those credentials.
+
+Environment variables solve this by separating configuration from code. The application reads sensitive values at runtime from the environment it is running in. The same Docker image can connect to a staging database or a production database — depending entirely on what is in the `.env` file on that server.
+
+The `.env` file is a plain text file with one `KEY=VALUE` pair per line. It lives at the **root of the project on the server only** — it must never be committed to version control. Docker Compose reads it automatically when a service declares `env_file: - .env`.
+
+Create the `.env` file **directly on the server** — never commit it to source control:
+
+```bash
+DB_NAME=yourapp
+DB_USER=yourapp_user
+DB_PASSWORD=StrongPasswordHere
+
+DATABASE_URL=postgresql://yourapp_user:StrongPasswordHere@postgres:5432/yourapp
+
+REDIS_PASSWORD=AnotherStrongPassword
+REDIS_URL=redis://:AnotherStrongPassword@redis:6379
+
+JWT_SECRET=generate-with-openssl-rand-base64-64
+JWT_EXPIRES_IN=7d
+
+SENDGRID_API_KEY=SG.your_actual_key
+FROM_EMAIL=noreply@yourdomain.com
+
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_your_key
+STRIPE_SECRET_KEY=sk_live_your_key
+STRIPE_WEBHOOK_SECRET=whsec_your_secret
+
+NEXT_PUBLIC_APP_URL=https://yourdomain.com
+NODE_ENV=production
+```
+
+Generate a cryptographically strong JWT secret:
+
+<CommandLine cmd="openssl rand -base64 64" note="Generate a cryptographically secure JWT secret" />
+
+Add to `.gitignore`:
+
+```
+.env
+.env.*
+*.env
+nginx/ssl/
+node_modules/
+.next/
+```
+
+<Callout type="tip">
+  Commit a `.env.example` file with identical keys but empty values. Anyone onboarding to the project immediately knows which variables are required without exposing real credentials.
+</Callout>
+
+---
+
+<PhaseHeading number={8} title="Prisma 7 in Production" />
+
+
+**Prisma** is a TypeScript ORM (Object-Relational Mapper) that provides a type-safe interface for interacting with PostgreSQL. Instead of writing raw SQL, you define your schema in `prisma/schema.prisma` and Prisma generates a strongly-typed client.
+
+**Prisma Migrate** manages database schema changes through versioned migration files stored in `prisma/migrations/`. Running `prisma migrate deploy` applies any pending migrations to the database in sequence.
+
+Prisma 7 introduced a breaking change: the database connection URL moved from `schema.prisma` to a dedicated `prisma.config.ts` file.
+
+```typescript
+// prisma.config.ts (at project root)
+import "dotenv/config";
+import { defineConfig, env } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: {
+    path: "prisma/migrations",
+  },
+  datasource: {
+    url: env("DATABASE_URL"),
+  },
+});
+```
+
+<Callout type="warning">
+  The `import "dotenv/config"` line at the top is non-negotiable. Without it, `process.env.DATABASE_URL` resolves to `undefined` even when the value exists in `.env`.
+</Callout>
+
+### Running Migrations with a Separate Container
+
+The Next.js standalone build excludes the Prisma CLI — it ships only what is required to serve web requests. Run migrations using a temporary container instead:
+
+```bash
+docker run --rm \
+  --network myproject_backend_network \
+  -v ~/myproject/prisma:/app/prisma \
+  -v ~/myproject/prisma.config.ts:/app/prisma.config.ts \
+  --env-file ~/myproject/.env \
+  -w /app \
+  node:20-alpine \
+  sh -c "npm install prisma@7.8.0 dotenv --no-save && npx prisma migrate deploy"
+```
+
+Re-run this command for every new migration that needs to be applied to production.
+
+---
+
+<PhaseHeading number={9} title="Pushing Code to GitHub" />
+
+```bash
+git init
+git add .
+git commit -m "initial commit"
+git branch -M main
+git remote add origin https://github.com/yourusername/your-repo.git
+git push -u origin main
+```
+
+---
+
+<PhaseHeading number={10} title="GitHub Actions CI/CD" />
+
+
+**CI/CD** (Continuous Integration / Continuous Deployment) is the practice of automatically building, testing, and deploying code every time a change is pushed to the repository.
+
+**GitHub Actions** is a built-in automation platform on GitHub. Workflows are defined as YAML files inside `.github/workflows/` at the root of your project. Each workflow specifies the trigger (e.g. a push to `main`), the machine to run on (`ubuntu-latest`), and a sequence of steps.
+
+The deployment workflow here does four things in order:
+1. Builds the Docker image from the latest code
+2. Pushes it to Docker Hub
+3. SSHes into the production server
+4. Pulls the new image and restarts only the Next.js container — zero downtime for the database and Nginx
+
+This means every `git push origin main` automatically deploys to production without any manual steps.
+
+### The Deployment Workflow
+
+Create `.github/workflows/deploy.yml`:
+
+```yaml
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push Docker image
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/your-app:latest .
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/your-app:latest
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/myproject
+            git pull origin main
+            docker compose pull nextjs
+            docker compose up -d --force-recreate nextjs
+```
+
+### GitHub Secrets to Configure
+
+Navigate to **Repository Settings → Secrets and variables → Actions** and add the following:
+
+| Secret | Value |
+|--------|-------|
+| `DOCKERHUB_USERNAME` | Your Docker Hub username |
+| `DOCKERHUB_TOKEN` | Docker Hub access token (Read & Write) |
+| `SERVER_IP` | Your server IP address |
+| `SERVER_USER` | Your server username (e.g. `noman`) |
+| `SSH_PRIVATE_KEY` | Full contents of your `.pem` file |
+
+Get your SSH key contents:
+
+<CommandLine cmd="cat ~/.ssh/your-key.pem" note="Copy everything including the BEGIN/END header lines" />
+
+<Callout type="info" title="Why port 22 must be open to Anywhere">
+  GitHub Actions uses rotating IP addresses. Restricting SSH to a single home IP will break automated deployments. The private key still protects the server — port 22 alone grants nothing without it.
+</Callout>
+
+---
+
+## The Complete Deployment Flow
+
+### On Your Local Machine (once)
+
+1. Configure `output: "standalone"` in `next.config.ts`
+2. Write your `Dockerfile` with multi-stage build
+3. Write `docker-compose.yml` defining all services
+4. Write `nginx/nginx.conf`
+5. Create `.github/workflows/deploy.yml`
+6. Build: `docker build -t yourusername/your-app:latest .`
+7. Push: `docker push yourusername/your-app:latest`
+8. Push code: `git push origin main`
+
+### On Your Server (one-time setup)
+
+```bash
+# Install Docker
+sudo apt update && sudo apt install -y docker.io docker-compose-plugin
+
+# Add swap
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+
+# Clone repository
+git clone https://github.com/yourusername/your-repo.git myproject
+cd myproject
+
+# Create environment file
+nano .env
+
+# Get SSL certificate (use HTTP-only nginx.conf first)
+docker compose up -d nginx
+docker compose run --rm certbot certonly --webroot ...
+
+# Restore SSL config and start everything
+git checkout nginx/nginx.conf
+docker compose pull
+docker compose up -d
+
+# Run migrations
+docker run --rm --network myproject_backend_network ...
+```
+
+### Every Subsequent Deployment
+
+```bash
+git add .
+git commit -m "your change description"
+git push origin main
+# GitHub Actions handles the rest automatically
+```
+
+---
+
+## Architecture Overview
+
+```
+Internet
+    │
+    ▼
+Server Firewall (ports 80, 443 open)
+    │
+    ▼
+Nginx Container
+  → HTTP:80 redirects to HTTPS
+  → SSL termination (Let's Encrypt)
+  → Rate limiting per IP
+  → Security headers
+  → Gzip compression
+  → Forwards to Next.js
+    │
+    ▼
+Next.js Container (port 3000, internal only)
+  → Serves pages and API routes
+  → Reads .env at runtime
+    │
+    ├──▶ PostgreSQL Container
+    │      → Named volume: postgres_data
+    │      → Only reachable on backend_network
+    │
+    └──▶ Redis Container
+           → Named volume: redis_data
+           → Only reachable on backend_network
+```
+
+---
+
+## Common Problems and Fixes
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| Server freezes during build | Out of memory | Add 2GB swap before building |
+| Nginx won't start (SSL mode) | Certificate doesn't exist yet | Use HTTP-only config first, get cert, then restore |
+| Database data gone after restart | Ran `docker compose down -v` | Never use `-v` in production |
+| `prisma generate` fails in Docker | Missing ENV vars at build time | Add dummy placeholder `ENV` values in builder stage |
+| `prisma migrate deploy` fails in Next.js container | CLI not in standalone build | Use separate `docker run` container for migrations |
+| GitHub Actions SSH timeout | Firewall restricts port 22 to your IP | Open port 22 to Anywhere — key still protects server |
+| App can't connect to database | Using `localhost` instead of service name | Use `postgres` as hostname in `DATABASE_URL` |
+
+---
+
+*Production deployment is a set of specific problems with specific, learnable solutions. Master each layer in isolation and the full stack becomes straightforward.*

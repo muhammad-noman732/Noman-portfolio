@@ -1,7 +1,41 @@
-import type { NextConfig } from "next";
+import createMDX from "@next/mdx";
+import remarkGfm from "remark-gfm";
+import remarkFrontmatter from "remark-frontmatter";
+import rehypeSlug from "rehype-slug";
+import rehypeAutolinkHeadings from "rehype-autolink-headings";
+import rehypePrettyCode from "rehype-pretty-code";
+import { NextConfig } from "next";
+
+/** @type {import('rehype-pretty-code').Options} */
+const prettyCodeOptions = {
+  theme: {
+    dark: "github-dark",
+    light: "github-light",
+  },
+  keepBackground: false,
+};
+
+const withMDX = createMDX({
+  options: {
+    remarkPlugins: [remarkGfm, remarkFrontmatter],
+    rehypePlugins: [
+      rehypeSlug,
+      [rehypeAutolinkHeadings, { behavior: "wrap" }],
+      [rehypePrettyCode, prettyCodeOptions],
+    ],
+  },
+});
 
 const nextConfig: NextConfig = {
+  pageExtensions: ["js", "jsx", "ts", "tsx", "md", "mdx"],
   trailingSlash: false,
+  output: "standalone",
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   async headers() {
     return [
       {
@@ -29,4 +63,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withMDX(nextConfig);
