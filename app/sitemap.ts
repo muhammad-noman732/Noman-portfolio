@@ -1,8 +1,10 @@
 import { MetadataRoute } from "next";
 import { projects } from "@/constants/projects";
+import { blogPosts } from "@/constants/blog";
+import { siteConfig } from "@/constants/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://nomandev.dev";
+  const baseUrl = siteConfig.url;
   const now = new Date().toISOString();
 
   const defaultPages: MetadataRoute.Sitemap = [
@@ -33,5 +35,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7,
   }));
 
-  return [...defaultPages, ...projectPages];
+  const blogPages: MetadataRoute.Sitemap = blogPosts.map((post) => ({
+    url: `${baseUrl}/blog/${post.slug}`,
+    lastModified: now,
+    changeFrequency: "monthly",
+    priority: 0.7,
+  }));
+
+  return [...defaultPages, ...projectPages, ...blogPages];
 }

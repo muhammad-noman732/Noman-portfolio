@@ -1,7 +1,8 @@
 import { MetadataRoute } from "next";
+import { siteConfig } from "@/constants/site";
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = "https://nomandev.dev";
+  const baseUrl = siteConfig.url;
 
   return {
     rules: [
@@ -10,7 +11,6 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/",
         disallow: ["/api/", "/_next/"],
       },
-      // AI Search Engine Bots — explicitly allow for AI SEO
       {
         userAgent: "GPTBot",
         allow: "/",
