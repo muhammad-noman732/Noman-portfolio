@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
 
@@ -9,7 +8,7 @@ interface CodeBlockProps {
 }
 
 export function CodeBlock({ children, ...props }: CodeBlockProps) {
-  const preRef  = useRef<HTMLPreElement>(null);
+  const preRef = useRef<HTMLPreElement>(null);
   const [copied, setCopied] = useState(false);
 
   const language =

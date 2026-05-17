@@ -1,13 +1,4 @@
 "use client";
-// ─────────────────────────────────────────────────────────────────────────────
-// components/blog/CommandLine.tsx
-// Phase 3 — Terminal command block (single command, no syntax highlighting)
-//
-// Usage in .mdx:
-//   <CommandLine cmd="docker compose up -d" />
-//   <CommandLine cmd="npm install @next/mdx @mdx-js/loader" note="Install MDX deps" />
-// ─────────────────────────────────────────────────────────────────────────────
-
 import { useState } from "react";
 import { Check, Copy, Terminal } from "lucide-react";
 

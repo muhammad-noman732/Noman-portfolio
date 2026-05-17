@@ -1,14 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// components/blog/Callout.tsx
-// Phase 3 — Callout / alert box for MDX content
-//
-// Usage in .mdx:
-//   <Callout type="warning">Never run this in production.</Callout>
-//   <Callout type="info">This is an informational note.</Callout>
-//   <Callout type="tip">Pro tip: use named Docker volumes.</Callout>
-//   <Callout type="danger">This deletes all data permanently.</Callout>
-// ─────────────────────────────────────────────────────────────────────────────
-
 import React from "react";
 import { AlertTriangle, Info, Lightbulb, Flame } from "lucide-react";
 

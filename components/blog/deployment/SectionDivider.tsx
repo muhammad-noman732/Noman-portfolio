@@ -1,8 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// components/blog/SectionDivider.tsx
-// Replaces <hr /> in MDX with a styled separator
-// ─────────────────────────────────────────────────────────────────────────────
-
 export function SectionDivider() {
   return (
     <div className="my-12 flex items-center gap-4" aria-hidden>

@@ -1,11 +1,4 @@
 "use client";
-// ─────────────────────────────────────────────────────────────────────────────
-// components/blog/PhaseHeading.tsx
-// Phase 3 — Large numbered phase banner for multi-phase guides
-//
-// Usage in .mdx:
-//   <PhaseHeading number={1} title="Setting Up Your Server" />
-// ─────────────────────────────────────────────────────────────────────────────
 
 interface PhaseHeadingProps {
   number: number;

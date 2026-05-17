@@ -1,11 +1,5 @@
 "use client";
-// ─────────────────────────────────────────────────────────────────────────────
-// components/blog/InlineCode.tsx
-// Backtick inline code — `like this` in markdown
-// ─────────────────────────────────────────────────────────────────────────────
-
 import React from "react";
-
 export function InlineCode({ children }: { children: React.ReactNode }) {
   return (
     <code
