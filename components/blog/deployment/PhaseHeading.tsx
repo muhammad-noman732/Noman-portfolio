@@ -11,7 +11,7 @@ export function PhaseHeading({ number, title }: PhaseHeadingProps) {
       {/* Big phase number pill */}
       <div
         className="
-          flex h-12 w-12 flex-shrink-0 items-center justify-center
+          flex h-12 w-12 shrink-0 items-center justify-center
           rounded-full bg-foreground text-background
           text-lg font-bold font-mono
           select-none
@@ -24,7 +24,7 @@ export function PhaseHeading({ number, title }: PhaseHeadingProps) {
         <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
           Phase {number}
         </span>
-        <h2 className="text-2xl font-bold text-foreground leading-tight">
+        <h2 className="text-2xl font-normal leading-tight tracking-tight text-foreground">
           {title}
         </h2>
       </div>

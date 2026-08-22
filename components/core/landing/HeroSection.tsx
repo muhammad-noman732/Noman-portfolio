@@ -8,35 +8,35 @@ const words = ["Software Engineer", "Iterator"];
 export function HeroSection() {
   return (
     <section className="py-16">
-      <div className="flex flex-col max-w-[72ch]">
+      <div className="flex max-w-[72ch] flex-col">
         <div
-          className="flex items-center gap-5 animate"
+          className="flex items-center gap-4 animate"
           style={{ animationDelay: "0ms" }}
         >
-          <div className="relative h-18 w-18 shrink-0 overflow-hidden rounded-full ring-1 ring-border">
+          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full ring-1 ring-border">
             <Image
               src={avatar}
               alt={siteConfig.name}
               fill
               placeholder="blur"
-              className="object-cover object-center scale-[1.13] object-[-20px_3px]"
+              className="object-cover object-center scale-[1.08]"
               priority
             />
           </div>
           <div className="flex flex-col justify-center">
-            <h1 className=" text-[25px] font-bold tracking-tighter text-foreground sm:text-[28px]">
+            <h1 className="text-[30px] font-medium leading-[1.05] tracking-[-0.045em] text-foreground sm:text-[40px]">
               {siteConfig.name}
             </h1>
             <FlipWords
               words={words}
               duration={1000}
-              className="mt-0.5 -ms-2 text-[15.5px] font-medium text-muted-foreground"
+              className="mt-1 text-[14px] font-normal text-muted-foreground sm:text-[15px]"
             />
           </div>
         </div>
 
         <div className="mt-8 animate" style={{ animationDelay: "80ms" }}>
-          <p className="text-[15px] leading-[1.8] text-muted-foreground sm:text-base">
+          <p className="max-w-[62ch] text-[15px] font-normal leading-[1.75] text-muted-foreground sm:text-[16px] sm:leading-[1.8]">
             I build end-to-end web and mobile products with clean architecture,
             practical AI integrations, and production-ready execution. Based in
             Lahore.

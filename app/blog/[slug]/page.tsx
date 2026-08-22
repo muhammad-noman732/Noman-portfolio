@@ -70,7 +70,7 @@ export default async function Page({ params }: BlogPostPageProps) {
 
   return (
     <>
-      <Container className="py-16">
+      <Container className="max-w-4xl py-16">
         <div className="animate-fade-in mb-8" style={{ animationDelay: "0ms" }}>
           <Button href="/blog" variant="link" className="text-xs">
             &larr; All Posts
@@ -84,7 +84,7 @@ export default async function Page({ params }: BlogPostPageProps) {
           {post && (
             <header className="not-prose mb-10">
               <div className="mb-8 h-px bg-border" />
-              <h1 className="text-4xl font-bold tracking-tight text-foreground mb-4">
+              <h1 className="text-4xl font-normal tracking-tight text-foreground mb-4">
                 {post.title}
               </h1>
             </header>

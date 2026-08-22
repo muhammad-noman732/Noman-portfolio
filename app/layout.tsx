@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Manrope, Hanken_Grotesk } from "next/font/google";
+import { Manrope, Quicksand } from "next/font/google";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
@@ -13,15 +13,15 @@ import Script from "next/script";
 
 import "./globals.css";
 
-const bodyFont = Hanken_Grotesk({
+const bodyFont = Quicksand({
   variable: "--font-hanken-grotesk",
   subsets: ["latin"],
   display: "swap",
 });
 
-const headingFont = Manrope({
+const headingFont = Quicksand({
   variable: "--font-space-grotesk",
-  weight: ["500", "600", "700"],
+  weight: ["400", "500", "600", "700"],
   subsets: ["latin"],
   display: "swap",
 });

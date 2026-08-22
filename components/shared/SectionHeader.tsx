@@ -14,7 +14,7 @@ export function SectionHeader({ label, title, className }: SectionHeaderProps) {
           {label}
         </p>
       )}
-      <h2 className="text-balance font-serif text-2xl font-semibold">
+      <h2 className="text-balance text-[36px] font-normal leading-[1] tracking-[-0.06em] text-foreground sm:text-[48px]">
         {title}
       </h2>
     </div>

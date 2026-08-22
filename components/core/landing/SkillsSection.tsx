@@ -1,31 +1,33 @@
-import { SectionHeader } from "@/components/shared/SectionHeader";
 import { Badge } from "@/components/ui/Badge";
 import { skillCategories } from "@/constants/skills";
 import { getTechSvgIcon } from "@/constants/tech-icons";
 
+const skills = Object.values(skillCategories).flat();
+
 export function SkillsSection() {
+  const marqueeSkills = [...skills, ...skills];
+
   return (
     <section className="py-16">
-      <SectionHeader label="Stack" title="Technologies I Work With" />
-      <div className="space-y-6">
-        {Object.entries(skillCategories).map(([category, items]) => (
-          <div key={category}>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              {category}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {items.map((skill) => (
+      <div className="mx-auto max-w-[980px]">
+        <div className="marquee-shell">
+          <div className="marquee-track">
+            {marqueeSkills.map((skill, index) => {
+              const normalizedSkill = skill.trim();
+
+              return (
                 <Badge
-                  key={skill}
-                  techIcon={getTechSvgIcon(skill)}
-                  techIconAlt={skill}
+                  key={`${normalizedSkill}-${index}`}
+                  className="mx-1 rounded-full border border-border/70 bg-[#c1bebe2d] px-3 py-1.5 text-[11px] text-foreground dark:bg-[#a8a29e12]"
+                  techIcon={getTechSvgIcon(normalizedSkill)}
+                  techIconAlt={normalizedSkill}
                 >
-                  {skill}
+                  {normalizedSkill}
                 </Badge>
-              ))}
-            </div>
+              );
+            })}
           </div>
-        ))}
+        </div>
       </div>
     </section>
   );

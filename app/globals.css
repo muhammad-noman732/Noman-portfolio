@@ -146,6 +146,49 @@ html {
     -1px -1px rgb(40, 40, 40, 0.633);
 }
 
+@keyframes marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-shell {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  padding-block: 0.2rem;
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 6%,
+    black 94%,
+    transparent
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 6%,
+    black 94%,
+    transparent
+  );
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  align-items: center;
+  gap: 0.6rem;
+  animation: marquee-scroll 24s linear infinite;
+  will-change: transform;
+}
+
+.marquee-shell:hover .marquee-track {
+  animation-play-state: paused;
+}
+
 /* ─── Animation keyframes ────────────────────────────── */
 @keyframes fade-up {
   from {
@@ -182,7 +225,8 @@ html {
 /* ─── Reduced motion ─────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in -fade-up,
-  .animate-fade-in -fade-in {
+  .animate-fade-in -fade-in,
+  .marquee-track {
     animation: none;
     opacity: 1;
     transform: none;

@@ -11,7 +11,7 @@ import { SectionDivider } from "@/components/blog/deployment/SectionDivider";
 const components: MDXComponents = {
     h1: ({ children, ...props }) => (
         <h1
-            className="mt-0 mb-8 text-4xl font-bold tracking-tight text-foreground"
+            className="mt-0 mb-8 text-4xl font-normal tracking-tight text-foreground"
             {...props}
         >
             {children}
@@ -20,7 +20,7 @@ const components: MDXComponents = {
 
     h2: ({ children, ...props }) => (
         <h2
-            className="mt-14 mb-4 text-2xl font-semibold tracking-tight text-foreground border-b border-border pb-2"
+            className="mt-14 mb-4 border-b border-border pb-2 text-2xl font-normal tracking-tight text-foreground"
             {...props}
         >
             {children}
@@ -29,7 +29,7 @@ const components: MDXComponents = {
 
     h3: ({ children, ...props }) => (
         <h3
-            className="mt-10 mb-3 text-xl font-semibold text-foreground"
+            className="mt-10 mb-3 text-2xl font-normal tracking-tight text-foreground"
             {...props}
         >
             {children}
@@ -38,7 +38,7 @@ const components: MDXComponents = {
 
     h4: ({ children, ...props }) => (
         <h4
-            className="mt-8 mb-2 text-lg font-semibold text-foreground"
+            className="mt-8 mb-2 text-2xl font-normal tracking-tight text-foreground"
             {...props}
         >
             {children}
@@ -119,7 +119,7 @@ const components: MDXComponents = {
 
         return (
             <CodeBlock data-language={language}>
-                <div dangerouslySetInnerHTML={{ __html: html }} className="[&>pre]:!bg-transparent [&>pre]:!p-0" />
+                <div dangerouslySetInnerHTML={{ __html: html }} className="[&>pre]:bg-transparent! [&>pre]:p-0!" />
             </CodeBlock>
         );
     },

@@ -7,5 +7,7 @@ export interface Experience {
   period: string;
   description: string;
   highlights?: string[];
+  location?: string;
+  techStack?: string[];
   current?: boolean;
 }
