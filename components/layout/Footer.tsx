@@ -5,7 +5,7 @@ import { siteConfig } from "@/constants/site";
 export function Footer() {
   return (
     <footer className="border-t border-border py-8 mt-20">
-      <Container className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+      <Container className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-8">
         <p className="text-sm text-muted-foreground">
           &copy; {new Date().getFullYear()} {siteConfig.name}
         </p>

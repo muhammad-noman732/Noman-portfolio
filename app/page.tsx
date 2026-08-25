@@ -12,15 +12,14 @@ import { JsonLd, getProfilePageSchema } from "@/components/seo/JsonLd";
 import { siteConfig } from "@/constants/site";
 
 export const metadata: Metadata = {
-  title:
-    "Muhammad Noman — Full-Stack Developer | SDE Portfolio",
+  title: "Muhammad Noman (Noman) | Full-Stack Developer Portfolio",
   description:
-    "Muhammad Noman is a software engineer (SDE) specializing in full-stack development, agentic AI, Next.js, React, React Native, and Python. View projects, experience, and skills. Based in Lahore, Pakistan.",
+    "Muhammad Noman, also known as Noman, is a Lahore-based software engineer specializing in full-stack development, agentic AI, Next.js, React, React Native, and Python.",
   alternates: {
     canonical: siteConfig.url,
   },
   openGraph: {
-    title: "Muhammad Noman — Full-Stack Developer ",
+    title: "Muhammad Noman (Noman) | Full-Stack Developer",
     description:
       "Software engineer building end-to-end web and mobile products with clean architecture, practical AI integrations, and production-ready execution.",
     url: siteConfig.url,
@@ -37,8 +36,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title:
-      "Muhammad Noman — Full-Stack Developer | SDE Portfolio",
+    title: "Muhammad Noman (Noman) | Full-Stack Developer Portfolio",
     description:
       "Software engineer building end-to-end web and mobile products with clean architecture, practical AI integrations, and production-ready execution.",
     images: [siteConfig.ogImage],

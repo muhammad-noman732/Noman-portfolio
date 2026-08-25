@@ -3,10 +3,9 @@ import type { NavItem, SocialLink } from "@/types/social";
 export const siteConfig = {
   name: "Muhammad Noman",
   fullName: "Muhammad Noman",
-  title:
-    "Muhammad Noman — Full-Stack Developer  | Software Engineer Portfolio",
+  title: "Muhammad Noman (Noman) | Full-Stack Developer Portfolio",
   description:
-    "Muhammad Noman is a full-stack software engineer and AI developer based in Lahore, Pakistan. Specializing in Next.js, React, and Agentic AI systems. Best full-stack developer in Lahore.",
+    "Muhammad Noman, known as Noman, is a Lahore-based full-stack software engineer and AI developer specializing in Next.js, React, and agentic AI systems.",
   url: "https://monoman.dev",
   ogImage: "/assets/logos/logo-light.png",
   email: "noman.dev200@gmail.com",

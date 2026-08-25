@@ -3,9 +3,10 @@ import { skillCategories } from "@/constants/skills";
 import { getTechSvgIcon } from "@/constants/tech-icons";
 
 const skills = Object.values(skillCategories).flat();
+const uniqueSkills = [...new Set(skills.map((skill) => skill.trim()))];
 
 export function SkillsSection() {
-  const marqueeSkills = [...skills, ...skills];
+  const marqueeSkills = [...uniqueSkills, ...uniqueSkills];
 
   return (
     <section className="py-16">
@@ -18,7 +19,7 @@ export function SkillsSection() {
               return (
                 <Badge
                   key={`${normalizedSkill}-${index}`}
-                  className="mx-1 rounded-full border border-border/70 bg-[#c1bebe2d] px-3 py-1.5 text-[11px] text-foreground dark:bg-[#a8a29e12]"
+                  className="rounded-full border border-border/70 bg-[#c1bebe2d] px-3 py-1.5 text-[11px] text-foreground dark:bg-[#a8a29e12]"
                   techIcon={getTechSvgIcon(normalizedSkill)}
                   techIconAlt={normalizedSkill}
                 >

@@ -28,7 +28,7 @@ export function getPersonSchema() {
     name: siteConfig.fullName,
     alternateName: ["Muhammad Noman", "Noman"],
     url: siteConfig.url,
-    image: siteConfig.ogImage,
+    image: `${siteConfig.url}${siteConfig.ogImage}`,
     email: siteConfig.email,
     jobTitle: siteConfig.jobTitle,
     description: siteConfig.description,
@@ -189,7 +189,7 @@ export function getArticleSchema(post: {
     "@type": "Article",
     headline: post.title,
     description: post.description,
-    image: siteConfig.ogImage,
+    image: `${siteConfig.url}${siteConfig.ogImage}`,
     author: {
       "@type": "Person",
       name: siteConfig.fullName,
@@ -200,7 +200,7 @@ export function getArticleSchema(post: {
       name: `${siteConfig.fullName} — Portfolio`,
       logo: {
         "@type": "ImageObject",
-        url: siteConfig.ogImage,
+        url: `${siteConfig.url}${siteConfig.ogImage}`,
       },
     },
     datePublished: new Date(post.date).toISOString(),

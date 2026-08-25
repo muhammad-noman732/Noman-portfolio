@@ -95,7 +95,7 @@ export function ExperienceSection() {
               {exp.highlights?.length ? (
                 <ul className="mt-4 space-y-3 pl-0 text-[0.96rem] leading-relaxed text-muted-foreground">
                   {exp.highlights.map((point) => (
-                    <li key={point} className="flex gap-3">
+                    <li key={point} className="flex gap-2">
                       <span className="mt-[0.55rem] h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/70" />
                       <span>{point}</span>
                     </li>

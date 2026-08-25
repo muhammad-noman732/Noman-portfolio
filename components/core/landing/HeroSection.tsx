@@ -1,8 +1,8 @@
 import Image from "next/image";
-import Link from "next/link";
 import { siteConfig, socialLinks } from "@/constants/site";
 import avatar from "@/public/avatar.png";
 import { FlipWords } from "@/components/ui/FlipWords";
+import { Button } from "@/components/ui/Button";
 const words = ["Software Engineer", "Iterator"];
 
 export function HeroSection() {
@@ -47,12 +47,13 @@ export function HeroSection() {
           className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 animate"
           style={{ animationDelay: "160ms" }}
         >
-          <Link
+          <Button
             href="/blog"
-            className="text-[14px] font-medium text-foreground underline decoration-border underline-offset-[3px] transition-colors duration-150 hover:decoration-foreground"
+            variant="outline"
+            className="border-accent/60 bg-accent/10 px-3 py-1.5 text-[13px] text-foreground hover:border-accent hover:bg-accent/20"
           >
             Read Blog
-          </Link>
+          </Button>
           {socialLinks.map((link) => (
             <a
               key={link.name}

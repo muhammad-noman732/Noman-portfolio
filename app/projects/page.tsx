@@ -49,7 +49,7 @@ export default function ProjectsPage() {
             {projects.map((project, i) => (
               <div
                 key={project.slug}
-                className="animate-fade-in "
+                className="animate-fade-in h-full"
                 style={{ animationDelay: `${240 + i * 80}ms` }}
               >
                 <ProjectCard project={project} />

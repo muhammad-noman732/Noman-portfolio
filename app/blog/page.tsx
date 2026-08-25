@@ -22,10 +22,18 @@ export const metadata: Metadata = {
   },
 };
 
-export default function BlogPage() {
+interface BlogPageProps {
+  searchParams: Promise<{ tag?: string }>;
+}
+
+export default async function BlogPage({ searchParams }: BlogPageProps) {
+  const { tag } = await searchParams;
   const sorted = [...blogPosts].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
+  const filtered = tag
+    ? sorted.filter((post) => post.tags.some((postTag) => postTag.toLowerCase() === tag.toLowerCase()))
+    : sorted;
   const isComingSoonFromContentful = false;
   return (
     <>
@@ -38,9 +46,9 @@ export default function BlogPage() {
             <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Coming Soon
             </span>
-            <h2 className="mt-3 font-serif text-xl tracking-tight text-foreground md:text-2xl">
+            <h1 className="mt-3 font-serif text-xl tracking-tight text-foreground md:text-2xl">
               Blog posts are on the way.
-            </h2>
+            </h1>
             <p className="mt-3 max-w-xl text-sm leading-7 text-muted-foreground ">
               I&apos;m preparing practical write-ups on engineering decisions,
               product building, and lessons from real projects. The first
@@ -50,7 +58,7 @@ export default function BlogPage() {
         ) : (
           <div>
             <div className="animate-fade-in " style={{ animationDelay: "0ms" }}>
-              <SectionHeader label="Writing" title="Blog" />
+              <SectionHeader label="Writing" title="Blog" headingLevel="h1" />
             </div>
             <p
               className="animate-fade-in  mb-10 max-w-md text-muted-foreground leading-relaxed"
@@ -58,7 +66,7 @@ export default function BlogPage() {
             >
               Thoughts on code, design, and the craft of building software.
             </p>
-            {sorted.map((post, i) => (
+            {filtered.map((post, i) => (
               <div
                 key={post.slug}
                 className="animate-fade-in "

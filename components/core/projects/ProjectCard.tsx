@@ -9,28 +9,23 @@ interface ProjectCardProps {
 
 export function ProjectCard({ project }: ProjectCardProps) {
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-xl border bg-[url(/noise-compressed.png)] bg-size-[auto_50px]  dark:bg-[#27272b00]">
+    <div className="group flex h-full flex-col overflow-hidden rounded-xl border bg-card">
       <Link
         href={`/projects/${project.slug}`}
-        className="relative  overflow-hidden bg-muted block aspect-3/2"
+        className="relative block aspect-3/2 overflow-hidden bg-muted p-3"
       >
-        <Image
-          src={project.image}
-          alt={project.title}
-          fill
-          placeholder="blur"
-          className=" object-cover transition-transform duration-500  group-hover:scale-[1.03] w-full"
-        />
+        <div className="relative h-full w-full overflow-hidden rounded-lg border border-border/70 bg-background shadow-sm">
+          <Image
+            src={project.image}
+            alt={project.title}
+            fill
+            placeholder="blur"
+            className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+          />
 
-        <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-background/30 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+          <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-background/30 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        </div>
 
-        {project.isApp && (
-          <div className="absolute right-2.5 z-10">
-            <span className="inline-flex items-center rounded-full bg-foreground  px-2 py-0.5 text-[10px] font-semibold text-background backdrop-blur-sm">
-              Mobile App
-            </span>
-          </div>
-        )}
       </Link>
 
       <div className="flex flex-1 flex-col p-5">
@@ -93,10 +88,14 @@ export function ProjectCard({ project }: ProjectCardProps) {
         </div> */}
 
         {/* Links */}
-        <div className=" pt-5 flex items-center ">
+        <div className="mt-auto flex min-h-9 flex-wrap items-center gap-2 pt-5">
           {project.liveUrl && (
-            <a href={project.liveUrl} target="_blank" rel="noopener noreferrer">
-              <RaisedButton className="px-3 py-1.5 text-[11px] h-auto rounded-xl mr-2 whitespace-nowrap before:rounded-lg flex gap-1.5 items-center">
+            <a
+              href={project.liveUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <RaisedButton className="flex h-9 items-center justify-center gap-1.5 rounded-lg px-4 py-1.5 text-[11px] whitespace-nowrap before:rounded-md">
                 Live Demo
                 <svg
                   width="10"
@@ -122,7 +121,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
               target="_blank"
               rel="noopener noreferrer"
               title="Source Code"
-              className={`flex items-center text-[12px] border-[1.4px]   ps-3 pr-4 py-[6px] rounded-md gap-2  text-muted-foreground hover:text-foreground `}
+              className="flex h-9 items-center justify-center gap-2 rounded-lg border-[1.4px] px-4 py-1.5 text-[12px] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
             >
               <svg
                 width="15"

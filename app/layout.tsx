@@ -79,9 +79,6 @@ export const metadata: Metadata = {
       google: siteConfig.googleVerification,
     },
   }),
-  other: {
-    "google-site-verification": siteConfig.googleVerification || "",
-  },
 };
 
 export default function RootLayout({

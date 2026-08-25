@@ -8,35 +8,36 @@ interface BlogCardProps {
 
 export function BlogCard({ post }: BlogCardProps) {
   return (
-    <Link
-      href={`/blog/${post.slug}`}
-      className="group flex items-start justify-between gap-4 border-b border-border py-5 last:border-b-0"
-    >
+    <article className="group flex items-start justify-between gap-4 border-b border-border py-5 last:border-b-0">
       <div className="min-w-0 flex-1">
-        <div className="flex flex-col justify-between gap-1 sm:flex-row sm:items-baseline">
-          <h3 className="font-medium text-foreground transition-colors duration-150 group-hover:text-accent">
+        <Link href={`/blog/${post.slug}`} className="block">
+          <h2 className="font-medium text-foreground transition-colors duration-150 hover:text-accent">
             {post.title}
-          </h3>
+          </h2>
+        </Link>
+        <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
           <time
             dateTime={post.date}
-            className="shrink-0 text-sm tabular-nums text-muted-foreground"
+            className="tabular-nums"
           >
             {formatDate(post.date)}
           </time>
+          <span aria-hidden="true">·</span>
+          <span>{post.readingTime}</span>
         </div>
         <p className="mt-1.5 text-sm leading-relaxed tracking-wide text-muted-foreground">
           {post.description}
         </p>
-        <div className="mt-2 flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">
-            {post.readingTime}
-          </span>
-          <span aria-hidden="true" className="text-xs text-muted-foreground">
-            ·
-          </span>
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           {post.tags.slice(0, 2).map((tag) => (
-            <span key={tag} className="text-xs text-muted-foreground">
-              {tag}
+            <span key={tag} className="inline-flex items-center gap-2">
+              <span aria-hidden="true">·</span>
+              <Link
+                href={`/blog?tag=${encodeURIComponent(tag)}`}
+                className="rounded-full border border-border px-2 py-0.5 text-foreground transition-colors hover:border-foreground/50 hover:bg-muted"
+              >
+                {tag}
+              </Link>
             </span>
           ))}
         </div>
@@ -61,6 +62,6 @@ export function BlogCard({ post }: BlogCardProps) {
           <path d="M7 7h10v10" />
         </svg>
       </div>
-    </Link>
+    </article>
   );
 }
